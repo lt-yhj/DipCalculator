@@ -66,6 +66,10 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', st.theme);
+    // 브라우저 강제 다크모드 방지 + 상태표시줄 색을 테마에 맞춤
+    const light = st.theme === 'light';
+    document.querySelector('meta[name="color-scheme"]')?.setAttribute('content', light ? 'only light' : 'dark');
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', light ? '#eef1f6' : '#000000');
   }, [st.theme]);
 
   const setValue = useCallback((value) => {

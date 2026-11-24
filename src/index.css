@@ -2,7 +2,7 @@
   --bg:#eef1f6; --panel:#ffffff; --cell:#e4e8f0; --key:#ffffff; --key-text:#13203a; --key-off:#b9bfca;
   --accent:#1f4fd8; --accent-press:#173fb0; --on-knob:#ffffff; --value:#0b5fc9; --label:#566074; --result-bg:#e6f0ff;
   --sw-label:#3b4558; --line:#d5dbe5; --warn:#c62828;
-  color-scheme:light;
+  color-scheme:only light; /* only: 삼성 인터넷·Chrome의 강제 다크모드가 화이트 테마를 덮어쓰지 못하게 */
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);
   padding-bottom:env(safe-area-inset-bottom,0px);
@@ -24,8 +24,8 @@ html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--key-text);font-family:'IBM Plex Sans KR',system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
   -webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;font-variant-numeric:tabular-nums}
 button{font:inherit;color:inherit}
-.app{height:100%;display:flex;flex-direction:column;max-width:540px;margin:0 auto}
-.view{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:7px;padding:10px 10px 8px}
+.app{height:100%;height:100dvh;display:flex;flex-direction:column;max-width:540px;margin:0 auto}
+.view{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:clamp(4px,1dvh,7px);padding:clamp(6px,1.4dvh,10px) 10px clamp(4px,1dvh,8px)}
 .view[hidden]{display:none}
 
 /* DIP 뱅크 */
@@ -34,7 +34,7 @@ button{font:inherit;color:inherit}
 .onmark b{color:var(--value);font-weight:700}
 .bank{display:grid;grid-template-columns:repeat(8,1fr);gap:8px}
 .col{display:flex;flex-direction:column;align-items:center;gap:3px}
-.sw{position:relative;width:100%;height:clamp(84px,13vh,118px);border-radius:9px;background:var(--cell);box-shadow:inset 0 0 0 1px var(--line);
+.sw{position:relative;width:100%;height:clamp(54px,12dvh,118px);border-radius:9px;background:var(--cell);box-shadow:inset 0 0 0 1px var(--line);
   touch-action:none;cursor:pointer;outline:none}
 .sw:focus-visible{box-shadow:0 0 0 2px var(--value)}
 .knob{position:absolute;left:0;right:0;top:50%;height:50%;background:var(--accent);border-radius:9px;transition:top .13s ease-out}
@@ -49,8 +49,6 @@ button{font:inherit;color:inherit}
 /* 값 표시 */
 .values{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .mini{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.onlist{grid-column:1/-1;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:7px 8px;font-size:16px;color:var(--label);text-align:center;line-height:1.6}
-.onlist b{color:var(--value);font-weight:700;font-size:19px}
 .val{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px 4px 7px;text-align:center;cursor:pointer;min-width:0}
 .val .k{font-size:14px;color:var(--label)}
 .val.res{background:var(--result-bg)}
@@ -67,13 +65,13 @@ button{font:inherit;color:inherit}
 
 /* 증감 */
 .arrows{display:grid;grid-template-columns:1fr 1fr;gap:6px;width:100%;max-width:440px;margin:0 auto}
-.arrows button{height:46px;border:0;border-radius:12px;background:var(--key);border:1px solid var(--line);
+.arrows button{height:clamp(34px,6dvh,46px);border:0;border-radius:12px;background:var(--key);border:1px solid var(--line);
   display:flex;align-items:center;justify-content:center;gap:8px;font-size:17px;cursor:pointer;touch-action:manipulation}
 .arrows button:active{background:var(--accent);color:#fff}
 .arrows svg{width:20px;height:20px}
 
 /* 키패드 */
-.pad{flex:1 1 auto;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:minmax(42px,1fr);gap:6px;width:100%;max-width:440px;max-height:470px;margin:0 auto}
+.pad{flex:1 1 auto;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:minmax(28px,1fr);gap:clamp(4px,0.8dvh,6px);width:100%;max-width:440px;max-height:470px;margin:0 auto}
 .key{border:1px solid var(--line);border-radius:10px;background:var(--key);font-size:22px;cursor:pointer;touch-action:manipulation}
 .key:active:not(:disabled){background:var(--accent);color:#fff}
 .key:disabled{color:var(--key-off);cursor:default}
@@ -100,3 +98,23 @@ button{font:inherit;color:inherit}
 #root{height:100%}
 .bank{justify-content:center}
 .onmark .sep{margin:0 6px;opacity:.5}
+
+/* 화면 높이가 낮은 기기: 한 화면에 들어오도록 글자·여백 축소 */
+@media (max-height:700px){
+  .val .v{margin-top:1px}
+  .val.big .v{font-size:26px}
+  .val.big.b2 .v{font-size:22px}
+  .val .k{font-size:12px}
+  .mini .val .v{font-size:16px}
+  .mini .val{padding:4px 6px}
+  .num{font-size:13px}
+  .key{font-size:19px}
+  .tabs button{padding:5px 0 4px}
+}
+@media (max-height:620px){
+  .sw{height:clamp(44px,10dvh,118px)}
+  .pad{grid-auto-rows:minmax(24px,1fr)}
+  .bankwrap{padding:6px 8px 4px}
+  .onmark{margin-bottom:4px}
+  .hint{min-height:10px;font-size:11px}
+}

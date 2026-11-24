@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useApp, BASES, BASE_NAMES, formatValue, bitAt, bitPos } from '../context/AppContext';
+import { useApp, BASES, BASE_NAMES, formatValue } from '../context/AppContext';
 
 function ValueCell({ b, kind, cellRef }) {
   const { value, base, buf, bits, setBase } = useApp();
@@ -27,7 +27,7 @@ function ValueCell({ b, kind, cellRef }) {
 }
 
 export default function ValueDisplay() {
-  const { value, base, bits, msb, hint } = useApp();
+  const { base, hint } = useApp();
   const activeRef = useRef(null);
 
   // 입력이 막히면 입력 칸을 흔든다
@@ -43,14 +43,6 @@ export default function ValueDisplay() {
   const resB = base === 2 ? 10 : 2;
   const minis = BASES.filter((b) => b !== base && b !== resB);
 
-  const on = [];
-  let order = '';
-  for (let i = 0; i < bits; i++) {
-    const bit = bitAt(value, bitPos(i, bits, msb));
-    if (bit) on.push(i + 1);
-    order += bit + ((i + 1) % 4 === 0 && i + 1 < bits ? ' ' : '');
-  }
-
   return (
     <>
       <section className="values">
@@ -58,10 +50,6 @@ export default function ValueDisplay() {
         <ValueCell b={resB} kind="res" />
         <div className="mini">
           {minis.map((b) => <ValueCell key={b} b={b} kind="mini" />)}
-        </div>
-        <div className="onlist">
-          {on.length ? <>ON 스위치 <b>{on.join(', ')}</b></> : <>ON 스위치 <b>없음</b> (모두 OFF)</>}
-          <br />스위치 1→{bits} 순서로 읽으면 <b>{order}</b>
         </div>
       </section>
       <div className="hint" aria-live="polite">{hint.msg}</div>
