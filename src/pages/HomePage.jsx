@@ -8,7 +8,7 @@ export default function HomePage() {
   const { bits, msb, upOn } = useApp();
 
   return (
-    <main className="view">
+    <main className="view home">
       <section className="bankwrap">
         <div className="onmark">
           ON 방향 <b>{upOn ? '▲ 위' : '▼ 아래'}</b>
