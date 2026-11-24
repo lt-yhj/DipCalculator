@@ -3,9 +3,6 @@
   --accent:#1f4fd8; --accent-press:#173fb0; --on-knob:#ffffff; --value:#0b5fc9; --label:#566074; --result-bg:#e6f0ff;
   --sw-label:#3b4558; --line:#d5dbe5; --warn:#c62828;
   color-scheme:only light; /* only: 삼성 인터넷·Chrome의 강제 다크모드가 화이트 테마를 덮어쓰지 못하게 */
-  box-sizing:border-box;
-  padding-top:env(safe-area-inset-top,0px);
-  padding-bottom:env(safe-area-inset-bottom,0px);
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -20,11 +17,12 @@
   --sw-label:#d2d5dc; --line:#23252a; --warn:#ff6b6b; color-scheme:dark;
 }
 *,*::before,*::after{box-sizing:border-box}
-html,body{height:100%;margin:0}
+html,body{height:100%;margin:0;overflow:hidden}
 body{background:var(--bg);color:var(--key-text);font-family:'IBM Plex Sans KR',system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
   -webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;font-variant-numeric:tabular-nums}
 button{font:inherit;color:inherit}
-.app{height:100%;height:100dvh;display:flex;flex-direction:column;max-width:540px;margin:0 auto}
+/* 탭까지 한 화면: 노치·제스처 바 여백(safe-area)을 앱 높이 안에 포함 */
+.app{height:100%;height:100dvh;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);display:flex;flex-direction:column;max-width:540px;margin:0 auto}
 .view{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:clamp(4px,1dvh,7px);padding:clamp(6px,1.4dvh,10px) 10px clamp(4px,1dvh,8px)}
 .view[hidden]{display:none}
 /* 홈: 남는 세로 공간을 맨 위·맨 아래에 반씩 (화면이 작아 넘칠 때는 위가 잘리지 않음) */
@@ -74,7 +72,8 @@ button{font:inherit;color:inherit}
 .arrows svg{width:20px;height:20px}
 
 /* 키패드 */
-.pad{flex:1 1 auto;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:minmax(28px,1fr);gap:clamp(4px,0.8dvh,6px);width:100%;max-width:440px;max-height:min(400px,38dvh);margin:0 auto}
+/* 기본 높이는 화면의 38%(최대 400px), 공간이 모자라면 남은 만큼만 차지하도록 줄어듦 */
+.pad{flex:0 1 min(400px,38dvh);min-height:96px;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:minmax(0,1fr);gap:clamp(4px,0.8dvh,6px);width:100%;max-width:440px;margin:0 auto}
 .key{border:1px solid var(--line);border-radius:10px;background:var(--key);font-size:22px;cursor:pointer;touch-action:manipulation}
 .key:active:not(:disabled){background:var(--accent);color:#fff}
 .key:disabled{color:var(--key-off);cursor:default}
@@ -115,8 +114,14 @@ button{font:inherit;color:inherit}
   .tabs button{padding:5px 0 4px}
 }
 @media (max-height:620px){
-  .sw{height:clamp(44px,10dvh,118px)}
-  .pad{grid-auto-rows:minmax(24px,1fr)}
+  .sw{height:clamp(36px,9dvh,118px)}
+  .arrows button{height:30px;font-size:15px}
+  .val{padding:3px 4px 4px}
+  .val.big .v{font-size:22px}
+  .val.big.b2 .v{font-size:19px}
+  .mini .val{padding:2px 6px}
+  .num{font-size:12px}
+  .key{font-size:17px}
   .bankwrap{padding:6px 8px 4px}
   .onmark{margin-bottom:4px}
   .hint{min-height:10px;font-size:11px}
