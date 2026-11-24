@@ -1,95 +1,51 @@
-import { useApp } from '../context/AppContext';
+import { useApp, BASES, BASE_NAMES, BIT_OPTIONS, maxOf } from '../context/AppContext';
 
-function ToggleSwitch({ on, onToggle }) {
+function Seg({ options, current, onPick }) {
   return (
-    <div className={`toggle-switch${on ? ' on' : ' off'}`} onClick={onToggle}>
-      <div className="toggle-thumb" />
+    <div className="seg" role="radiogroup">
+      {options.map(([val, label]) => (
+        <button key={String(val)} role="radio" aria-checked={val === current} onClick={() => onPick(val)}>
+          {label}
+        </button>
+      ))}
     </div>
   );
 }
 
 export default function SettingsPage() {
-  const {
-    isMSB, isDarkMode, onDirection, selectedBases, switchCount,
-    toggleMSB, toggleDarkMode, setOnDirection, toggleBase, updateSwitchCount,
-  } = useApp();
+  const { base, bits, msb, upOn, edge, theme, setBase, setBits, setOption } = useApp();
 
   return (
-    <div className="settings-page">
-      <div className="settings-content">
-
-        {/* 섹션 1: 설정 */}
-        <div className="settings-section">
-          <div className="section-title">설정</div>
-          <div className="group-inner">
-            <div className="toggle-group">
-              <div className="toggle-row">
-                <span className="toggle-label">{isMSB ? 'MSB ↔ LSB' : 'LSB ↔ MSB'}</span>
-                <ToggleSwitch on={isMSB} onToggle={toggleMSB} />
-              </div>
-              <div className="divider" />
-              <div className="toggle-row">
-                <span className="toggle-label">{isDarkMode ? '다크모드' : '라이트모드'}</span>
-                <ToggleSwitch on={isDarkMode} onToggle={toggleDarkMode} />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 섹션 2: 진수 표시 */}
-        <div className="settings-section">
-          <div className="section-title">진수 표시</div>
-          <div className="group-inner">
-            <div className="btn-group">
-              {[8, 10, 16].map(base => (
-                <button
-                  key={base}
-                  className={`base-btn${selectedBases.includes(base) ? ' selected' : ''}`}
-                  onClick={() => toggleBase(base)}
-                >
-                  {base === 8 ? '8진수' : base === 10 ? '10진수' : '16진수'}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* 섹션 3: ON 방향 */}
-        <div className="settings-section">
-          <div className="section-title">ON 방향</div>
-          <div className="group-inner">
-            <div className="btn-group">
-              <button
-                className={`base-btn${onDirection === 'top' ? ' selected' : ''}`}
-                onClick={() => setOnDirection('top')}
-              >
-                ▲ 위 = ON
-              </button>
-              <button
-                className={`base-btn${onDirection === 'bottom' ? ' selected' : ''}`}
-                onClick={() => setOnDirection('bottom')}
-              >
-                ▼ 아래 = ON
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* 섹션 4: 딥스위치 개수 */}
-        <div className="settings-section">
-          <div className="section-title">딥스위치 개수</div>
-          <div className="group-inner">
-            <div className="count-group">
-              <span className="count-label">개수</span>
-              <button className="count-btn" onClick={() => updateSwitchCount(switchCount - 1)}>−</button>
-              <span className="count-value">{switchCount}</span>
-              <button className="count-btn" onClick={() => updateSwitchCount(switchCount + 1)}>+</button>
-            </div>
-          </div>
-        </div>
-
+    <main className="view">
+      <div className="group">
+        <h2>입력 진법</h2>
+        <p>키패드로 입력할 진법입니다. 홈 화면의 값 칸을 눌러도 바뀝니다.</p>
+        <Seg options={BASES.map((b) => [b, BASE_NAMES[b]])} current={base} onPick={setBase} />
       </div>
-      <div className="settings-spacer" />
-    </div>
+      <div className="group">
+        <h2>딥스위치 개수</h2>
+        <p>스위치 {bits}개 · 0 ~ {maxOf(bits)}까지 표현합니다. 개수를 줄이면 남는 하위 비트만 유지됩니다.</p>
+        <Seg options={BIT_OPTIONS.map((n) => [n, `${n}개`])} current={bits} onPick={setBits} />
+      </div>
+      <div className="group">
+        <h2>비트 순서</h2>
+        <p>1번 스위치를 최하위 비트(LSB)로 볼지 최상위 비트(MSB)로 볼지 정합니다. 바꿔도 값은 그대로이고 스위치 배치가 바뀝니다.</p>
+        <Seg options={[[false, '1번 = LSB'], [true, '1번 = MSB']]} current={msb} onPick={(v) => setOption('msb', v)} />
+      </div>
+      <div className="group">
+        <h2>ON 방향</h2>
+        <p>스위치를 어느 쪽으로 밀었을 때 1(ON)로 볼지 정합니다. 실제 장비의 DIP 스위치 표기와 맞추세요.</p>
+        <Seg options={[[true, '위로 = ON'], [false, '아래로 = ON']]} current={upOn} onPick={(v) => setOption('upOn', v)} />
+      </div>
+      <div className="group">
+        <h2>증감 버튼 끝에서</h2>
+        <p>최댓값에서 1 증가, 0에서 1 감소를 눌렀을 때의 동작입니다.</p>
+        <Seg options={[['clamp', '멈춤'], ['wrap', '넘어가기']]} current={edge} onPick={(v) => setOption('edge', v)} />
+      </div>
+      <div className="group">
+        <h2>화면</h2>
+        <Seg options={[['dark', '다크'], ['light', '화이트']]} current={theme} onPick={(v) => setOption('theme', v)} />
+      </div>
+    </main>
   );
 }

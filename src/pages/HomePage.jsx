@@ -1,35 +1,28 @@
 import { useApp } from '../context/AppContext';
 import DipSwitch from '../components/DipSwitch';
-import NumberDisplay from '../components/NumberDisplay';
+import ValueDisplay from '../components/ValueDisplay';
+import StepButtons from '../components/StepButtons';
 import Keypad from '../components/Keypad';
 
 export default function HomePage() {
-  const { switchCount, selectedBases, isMSB } = useApp();
+  const { bits, msb, upOn } = useApp();
 
   return (
-    <div className="home-page">
-      <div className="top-section">
-        <div className="dip-switch-area">
-          <div className="switch-columns">
-            {Array.from({ length: switchCount }, (_, i) => (
-              <div key={i} className="switch-col">
-                <DipSwitch index={i} />
-                <span className="switch-number">
-                  {isMSB ? switchCount - i : i + 1}
-                </span>
-              </div>
-            ))}
-          </div>
+    <main className="view">
+      <section className="bankwrap">
+        <div className="onmark">
+          ON 방향 <b>{upOn ? '▲ 위' : '▼ 아래'}</b>
+          <span className="sep">·</span>
+          1번 = <b>{msb ? 'MSB' : 'LSB'}</b>
         </div>
-        <div className="number-display-area">
-          {selectedBases.map(base => (
-            <NumberDisplay key={base} base={base} />
-          ))}
+        {/* 개수와 상관없이 8개일 때와 같은 폭으로 가운데 정렬 */}
+        <div className="bank" style={{ gridTemplateColumns: `repeat(${bits}, calc((100% - 56px) / 8))` }}>
+          {Array.from({ length: bits }, (_, i) => <DipSwitch key={i} index={i} />)}
         </div>
-      </div>
-      <div className="keypad-section">
-        <Keypad />
-      </div>
-    </div>
+      </section>
+      <ValueDisplay />
+      <StepButtons />
+      <Keypad />
+    </main>
   );
 }

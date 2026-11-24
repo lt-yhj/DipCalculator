@@ -1,167 +1,135 @@
-import { createContext, useContext, useState, useMemo, useCallback } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useContext, useState, useRef, useEffect, useCallback, useMemo } from 'react';
 
 const AppContext = createContext(null);
 
-function switchesToDecimal(values, msb) {
-  if (msb) {
-    return values.reduce((acc, bit, i) => acc + bit * Math.pow(2, values.length - 1 - i), 0);
-  }
-  return values.reduce((acc, bit, i) => acc + bit * Math.pow(2, i), 0);
+const STORAGE_KEY = 'dipaddr.v1';
+export const BASES = [2, 8, 10, 16];
+export const BASE_NAMES = { 2: '2진수', 8: '8진수', 10: '10진수', 16: '16진수' };
+export const BIT_OPTIONS = [2, 4, 8];
+
+const clampBits = (n) => (BIT_OPTIONS.includes(Number(n)) ? Number(n) : 8);
+export const maxOf = (bits) => 2 ** bits - 1;
+export const bitAt = (v, pos) => Math.floor(v / 2 ** pos) % 2;
+// i번째 스위치(0부터)가 가리키는 비트 위치
+export const bitPos = (i, bits, msb) => (msb ? bits - 1 - i : i);
+
+export function formatValue(v, base, bits) {
+  let s = v.toString(base).toUpperCase();
+  if (base === 2) s = s.padStart(bits, '0').replace(/\B(?=(\d{4})+$)/g, ' ');
+  return s;
 }
 
-function decimalToSwitches(decimal, count, msb) {
-  const values = Array(count).fill(0);
-  const maxVal = Math.pow(2, count) - 1;
-  const n = Math.min(Math.max(0, Math.floor(decimal)), maxVal);
-  for (let i = 0; i < count; i++) {
-    if (msb) {
-      values[count - 1 - i] = (n >> i) & 1;
-    } else {
-      values[i] = (n >> i) & 1;
-    }
-  }
-  return values;
+function loadState() {
+  const st = { value: 0, bits: 8, msb: false, base: 10, upOn: true, theme: 'dark', edge: 'clamp' };
+  try {
+    const s = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+    if (s && typeof s === 'object') Object.assign(st, s);
+  } catch { /* 저장값이 없거나 깨졌으면 기본값 사용 */ }
+  st.bits = clampBits(st.bits);
+  st.value = Math.min(maxOf(st.bits), Math.max(0, Math.floor(Number(st.value)) || 0));
+  st.msb = !!st.msb;
+  st.upOn = st.upOn !== false;
+  st.theme = st.theme === 'light' ? 'light' : 'dark';
+  st.edge = st.edge === 'wrap' ? 'wrap' : 'clamp';
+  st.base = 10; // 앱 실행 시 항상 10진수 입력으로 시작 (저장된 진법은 무시)
+  st.buf = null; // 키패드로 입력 중인 문자열 (null이면 값에서 생성)
+  return st;
 }
 
 export function AppProvider({ children }) {
-  const [switchCount, setSwitchCount] = useState(8);
-  const [switchValues, setSwitchValues] = useState(Array(8).fill(0));
-  const [isMSB, setIsMSB] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(true);
-  const [onDirection, setOnDirection] = useState('top');
-  const [selectedBases, setSelectedBases] = useState([10, 16]);
-  const [activeBase, setActiveBase] = useState(null);
-  const [inputValue, setInputValue] = useState('');
-  const [cursorPos, setCursorPos] = useState(0);
-
-  const decimalValue = useMemo(
-    () => switchesToDecimal(switchValues, isMSB),
-    [switchValues, isMSB]
-  );
-
-  const formatValue = useCallback((base) => {
-    if (base === 8) return decimalValue.toString(8).toUpperCase();
-    if (base === 10) return decimalValue.toString(10);
-    if (base === 16) return decimalValue.toString(16).toUpperCase();
-    return '0';
-  }, [decimalValue]);
-
-  const toggleSwitch = useCallback((index) => {
-    const next = [...switchValues];
-    next[index] ^= 1;
-    setSwitchValues(next);
-    if (activeBase !== null) {
-      const newDecimal = switchesToDecimal(next, isMSB);
-      const str = activeBase === 8 ? newDecimal.toString(8).toUpperCase()
-                : activeBase === 10 ? newDecimal.toString(10)
-                : newDecimal.toString(16).toUpperCase();
-      setInputValue(str);
-      setCursorPos(str.length);
-    }
-  }, [switchValues, isMSB, activeBase]);
-
-  const toggleMSB = useCallback(() => {
-    setIsMSB(prev => !prev);
-    setSwitchValues(prev => [...prev].reverse());
+  const [st, setSt] = useState(loadState);
+  // 길게 누르기 반복처럼 연속 호출되는 동작이 항상 최신 상태를 읽도록 ref에 동기 반영
+  const stRef = useRef(st);
+  const update = useCallback((patch) => {
+    stRef.current = { ...stRef.current, ...patch };
+    setSt(stRef.current);
   }, []);
 
-  const toggleDarkMode = useCallback(() => {
-    setIsDarkMode(prev => !prev);
+  const [hint, setHintState] = useState({ msg: '', n: 0 });
+  const hintTimer = useRef(null);
+  const showHint = useCallback((msg) => {
+    clearTimeout(hintTimer.current);
+    setHintState((h) => ({ msg, n: h.n + 1 }));
+    hintTimer.current = setTimeout(() => setHintState((h) => ({ ...h, msg: '' })), 1800);
   }, []);
-
-  const updateSwitchCount = useCallback((newCount) => {
-    const count = Math.max(1, Math.min(32, newCount));
-    setSwitchCount(count);
-    setSwitchValues(Array(count).fill(0));
-    setActiveBase(null);
-    setInputValue('');
+  const clearHint = useCallback(() => {
+    clearTimeout(hintTimer.current);
+    setHintState((h) => (h.msg ? { ...h, msg: '' } : h));
   }, []);
+  useEffect(() => () => clearTimeout(hintTimer.current), []);
 
-  const toggleBase = useCallback((base) => {
-    setSelectedBases(prev => {
-      if (prev.includes(base)) {
-        if (prev.length === 1) return prev;
-        const next = prev.filter(b => b !== base);
-        if (activeBase === base) {
-          setActiveBase(next[0]);
-          const d = switchesToDecimal(switchValues, isMSB);
-          const str = next[0] === 8 ? d.toString(8).toUpperCase()
-                    : next[0] === 10 ? d.toString(10)
-                    : d.toString(16).toUpperCase();
-          setInputValue(str);
-          setCursorPos(str.length);
-        }
-        return next;
-      }
-      return [...prev, base].sort((a, b) => a - b);
-    });
-  }, [activeBase, switchValues, isMSB]);
+  useEffect(() => {
+    const { buf: _buf, ...rest } = st;
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(rest)); } catch { /* 저장 불가 환경 무시 */ }
+  }, [st]);
 
-  const activateBase = useCallback((base) => {
-    if (activeBase === base) return;
-    setActiveBase(base);
-    const str = base === 8 ? decimalValue.toString(8).toUpperCase()
-              : base === 10 ? decimalValue.toString(10)
-              : decimalValue.toString(16).toUpperCase();
-    setInputValue(str);
-    setCursorPos(str.length);
-  }, [activeBase, decimalValue]);
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', st.theme);
+  }, [st.theme]);
 
-  const deactivateBase = useCallback(() => {
-    setActiveBase(null);
-    setInputValue('');
-  }, []);
+  const setValue = useCallback((value) => {
+    update({ value, buf: null });
+    clearHint();
+  }, [update, clearHint]);
 
-  const handleKeypadInput = useCallback((key) => {
-    if (activeBase === null) return;
+  const setSwitch = useCallback((i, up) => {
+    const { value, bits, msb, upOn } = stRef.current;
+    const pos = bitPos(i, bits, msb);
+    const want = up === upOn ? 1 : 0;
+    const cur = bitAt(value, pos);
+    setValue(cur === want ? value : value + (want ? 1 : -1) * 2 ** pos);
+  }, [setValue]);
 
-    if (key === 'RESET') {
-      setInputValue('0');
-      setCursorPos(1);
-      setSwitchValues(Array(switchCount).fill(0));
+  const press = useCallback((k) => {
+    const { value, base, buf, bits } = stRef.current;
+    if (k === 'RESET') { setValue(0); return; }
+    if (k === 'DEL') {
+      const cur = buf !== null ? buf : value.toString(base).toUpperCase();
+      const s = cur.slice(0, -1);
+      update({ buf: s, value: s ? parseInt(s, base) : 0 });
+      clearHint();
       return;
     }
+    if (parseInt(k, 16) >= base) return;
+    let s = buf === null ? '' : buf; // 스위치/증감 후 첫 입력은 새로 시작
+    if (s === '0') s = '';
+    const next = s + k;
+    const v = parseInt(next, base);
+    const max = maxOf(bits);
+    if (v > max) { showHint(`최대 ${max} (${bits}비트)까지 입력할 수 있습니다`); return; }
+    update({ buf: next, value: v });
+    clearHint();
+  }, [update, setValue, showHint, clearHint]);
 
-    if (key === 'DEL') {
-      if (cursorPos > 0) {
-        const next = inputValue.slice(0, cursorPos - 1) + inputValue.slice(cursorPos);
-        const decimal = next === '' ? 0 : parseInt(next, activeBase);
-        if (!isNaN(decimal)) {
-          const display = next === '' ? '0' : next;
-          const newPos = next === '' ? 1 : cursorPos - 1;
-          setInputValue(display);
-          setCursorPos(newPos);
-          setSwitchValues(decimalToSwitches(decimal, switchCount, isMSB));
-        }
-      }
-      return;
-    }
+  // 1 증감. 더 이상 움직일 수 없으면 false를 돌려줘 반복을 멈춘다.
+  const step = useCallback((d) => {
+    const { value, bits, edge } = stRef.current;
+    const max = maxOf(bits);
+    let v = value + d;
+    if (v > max) v = edge === 'wrap' ? 0 : max;
+    if (v < 0) v = edge === 'wrap' ? max : 0;
+    if (v === value) { showHint(d > 0 ? `최댓값 ${max}입니다` : '최솟값 0입니다'); return false; }
+    setValue(v);
+    return true;
+  }, [setValue, showHint]);
 
-    const raw = inputValue.slice(0, cursorPos) + key + inputValue.slice(cursorPos);
-    // leading zero 제거 (예: "012" → "12")
-    const next = raw.replace(/^0+([0-9A-Fa-f])/, '$1');
-    const decimal = parseInt(next, activeBase);
-    const maxVal = Math.pow(2, switchCount) - 1;
-    if (!isNaN(decimal) && decimal <= maxVal) {
-      const diff = raw.length - next.length; // 제거된 앞자리 수
-      setInputValue(next);
-      setCursorPos(cursorPos + 1 - diff);
-      setSwitchValues(decimalToSwitches(decimal, switchCount, isMSB));
-    }
-  }, [activeBase, cursorPos, inputValue, switchCount, isMSB]);
+  const setBase = useCallback((base) => update({ base, buf: null }), [update]);
 
-  return (
-    <AppContext.Provider value={{
-      switchCount, switchValues, isMSB, isDarkMode, onDirection,
-      selectedBases, activeBase, inputValue, cursorPos,
-      decimalValue, formatValue,
-      setOnDirection, setCursorPos,
-      toggleSwitch, toggleMSB, toggleDarkMode,
-      updateSwitchCount, toggleBase, activateBase, deactivateBase, handleKeypadInput,
-    }}>
-      {children}
-    </AppContext.Provider>
-  );
+  const setBits = useCallback((n) => {
+    const bits = clampBits(n);
+    // 개수를 줄이면 남는 하위 비트만 유지
+    update({ bits, value: stRef.current.value % 2 ** bits, buf: null });
+    clearHint();
+  }, [update, clearHint]);
+
+  const setOption = useCallback((key, val) => update({ [key]: val }), [update]);
+
+  const value = useMemo(() => ({
+    ...st, hint, setValue, setSwitch, press, step, setBase, setBits, setOption,
+  }), [st, hint, setValue, setSwitch, press, step, setBase, setBits, setOption]);
+
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
 
 export const useApp = () => useContext(AppContext);
